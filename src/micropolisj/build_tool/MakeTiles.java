@@ -5,6 +5,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import javax.imageio.*;
 import javax.swing.ImageIcon;
@@ -28,21 +30,43 @@ public class MakeTiles
 		if (args.length != 2) {
 			throw new Exception("Wrong number of arguments");
 		}
-
-		if (System.getProperty("tile_size") != null) {
-			TILE_SIZE = Integer.parseInt(System.getProperty("tile_size"));
+		if (System.getProperty("complete_batch") != null) {
+			//Make all the appropriate "tiles.png" images
+			File recipeFile = new File(args[0]);
+			File outputDir = new File(args[1]);
+			TILE_SIZE = 3;
+			generateFromRecipe(recipeFile, outputDir);
+			TILE_SIZE = 8;
+			loadedImages.clear();
+			generateFromRecipe(recipeFile, outputDir);
+			TILE_SIZE = 16;
+			loadedImages.clear();
+			generateFromRecipe(recipeFile, outputDir);
+			TILE_SIZE = 32;
+			loadedImages.clear();
+			generateFromRecipe(recipeFile, outputDir);
+			
+			//Copy over the recipe file to the output dir
+			File outputRecipeFile = new File(outputDir, recipeFile.getName());
+			System.out.println("Copying "+recipeFile.toPath()+" to "+outputRecipeFile.toPath());
+			Files.copy(recipeFile.toPath(), outputRecipeFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		}
-		if (System.getProperty("skip_tiles") != null) {
-			SKIP_TILES = Integer.parseInt(System.getProperty("skip_tiles"));
+		else {
+			if (System.getProperty("tile_size") != null) {
+				TILE_SIZE = Integer.parseInt(System.getProperty("tile_size"));
+			}
+			if (System.getProperty("skip_tiles") != null) {
+				SKIP_TILES = Integer.parseInt(System.getProperty("skip_tiles"));
+			}
+			if (System.getProperty("tile_count") != null) {
+				COUNT_TILES = Integer.parseInt(System.getProperty("tile_count"));
+			}
+	
+			File recipeFile = new File(args[0]);
+			File outputDir = new File(args[1]);
+	
+			generateFromRecipe(recipeFile, outputDir);
 		}
-		if (System.getProperty("tile_count") != null) {
-			COUNT_TILES = Integer.parseInt(System.getProperty("tile_count"));
-		}
-
-		File recipeFile = new File(args[0]);
-		File outputDir = new File(args[1]);
-
-		generateFromRecipe(recipeFile, outputDir);
 	}
 
 	static void generateFromRecipe(File recipeFile, File outputDir)
@@ -87,13 +111,21 @@ public class MakeTiles
 		outputDir.mkdirs();
 
 		// output the composed images
-		File outputFile = new File(outputDir, "tiles.png");
+		String suffix = null;
+		switch (TILE_SIZE) {
+		case 3	: suffix = "sm"; break;
+		case 8	: suffix = "_8x8"; break;
+		case 16	: suffix = "_16x16"; break;
+		case 32	: suffix = "_32x32"; break;
+		default	: suffix = "";
+		}
+		File outputFile = new File(outputDir, "tiles"+suffix+".png");
 		System.out.println("Generating tiles array: "+outputFile);
 		ImageIO.write(buf, "png", outputFile);
 
 		// output an index of all tile names and their offset into
 		// the composed tile array
-		File indexFile = new File(outputDir, "tiles.idx");
+		File indexFile = new File(outputDir, "tiles"+suffix+".idx");
 		System.out.println("Generating tiles index: "+indexFile);
 		writeIndexFile(tileNames, indexFile);
 	}
